@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Station Assignments Test</title>
+    <style>
+      body {
+        background-color: #c4d4e0;
+        padding: 12px;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      form {
+        background-color: #92abbe;
+        padding: 12px;
+        width: 700px;
+      }
+      table { 
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        margin-top: 12px;
+      }
+      table,
+      th,
+      td {
+        border: 2px solid #6e8a9f;
+        text-align: left;
+        padding: 8px;
+      }
+      th {
+        background-color: #92abbe;
+      }
+      input[type='text'] {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 5px 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Single-Page AIM On Demand Cart Assignments Query</h1>
+    <form id="form">
+      <label for="StationID">Select station:</label>
+      <select name="StationID" id="StationID">
+        <option value="KRSE-FM">KRSE</option>
+        <option value="KEZO-FM">KEZO</option>
+        <option value="WVLZ-FM">WVLZ</option>
+      </select>
+      <label for="BroadcastDay">Filter by Day:</label>
+      <select name="BroadcastDay" id="BroadcastDay">
+        <option value="">All Days</option>
+        <option value="1">Monday</option>
+        <option value="2">Tuesday</option>
+        <option value="3">Wednesday</option>
+        <option value="4">Thursday</option>
+        <option value="5">Friday</option>
+        <option value="6">Saturday</option>
+        <option value="7">Sunday</option>
+      </select>
+      <button type="button" id="fetchData">Find Assignments</button>
+    </form>
+    <div id="result"></div>
+   
+    <script>
+      document.getElementById('fetchData').addEventListener('click', () => {
+      const payload = {
+        StationID: document.getElementById('StationID').value,
+        ...(document.getElementById('BroadcastDay').value && { BroadcastDay: document.getElementById('BroadcastDay').value })
+      };
+    
+      fetch('https://c4z6hnvmce.execute-api.us-west-2.amazonaws.com/Testing/getOnDemandStationAssignments/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => renderResults(data.respon || []))
+      .catch(error => console.error('Error:', error));
+      });
+    
+      function renderResults(assignments) {
+      const resultElement = document.getElementById('result');
+      resultElement.innerHTML = assignments.length ? `
+        <table>
+          <tr>
+            <th>Cart Number</th>
+            <th>Vehicle Code</th>
+            <th>Filename</th>
+            <th>Day</th>
+            <th>Edit</th>
+          </tr>
+          ${assignments.map(assignment => `
+            <tr>
+              <td><input type="text" value="${assignment.CartNumber}" data-id="${assignment.idAIMOnDemandStationAssignments}" /></td>
+              <td>${assignment.VehicleCode}</td>
+              <td>${assignment.Filename}</td>
+              <td>${assignment.BroadcastDay}</td>
+              <td><button onclick="saveCartNumber(this)">Save</button></td>
+            </tr>
+          `).join('')}
+        </table>
+      ` : 'No assignments found.';
+      }
+    
+      function saveCartNumber(button) {
+      const input = button.closest('tr').querySelector('input[type="text"]');
+      fetch('https://c4z6hnvmce.execute-api.us-west-2.amazonaws.com/Testing/updateOnDemandCartAssignment/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ idAIMOnDemandStationAssignments: input.dataset.id, CartNumber: input.value }])
+      })
+      .then(response => response.json())
+      .then(() => alert('Cart number updated successfully!'))
+      .catch(error => console.error('Error:', error));
+      }
+    </script>
+<!-- 
+    <script>
+
+      document.getElementById('fetchData').addEventListener('click', findSpots);
+
+      function findSpots() {
+        const stationID = document.getElementById('StationID').value;
+        const broadcastDay = document.getElementById('BroadcastDay').value;
+
+        const payload = { StationID: stationID };
+        if (broadcastDay) {
+          payload.BroadcastDay = broadcastDay;
+        }
+
+        fetch(
+          'https://c4z6hnvmce.execute-api.us-west-2.amazonaws.com/Testing/getOnDemandStationAssignments/',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          }
+        )
+          .then((response) => response.json())
+          .then((data) => renderResults(data.respon || []))
+          .catch((error) => console.error('Error:', error));
+      }
+
+      function renderResults(assignments) {
+        const resultElement = document.getElementById('result');
+        resultElement.innerHTML = '';
+
+        if (assignments.length === 0) {
+          resultElement.textContent = 'No assignments found.';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <tr>
+            <th>Cart Number</th>
+            <th>Vehicle Code</th>
+            <th>Filename</th>
+            <th>Day</th>
+            <th>Edit</th>
+          </tr>
+        `;
+
+        assignments.forEach((assignment) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>
+              <input type="text" value="${assignment.CartNumber}" data-id="${assignment.idAIMOnDemandStationAssignments}" />
+            </td>
+            <td>${assignment.VehicleCode}</td>
+            <td>${assignment.Filename}</td>
+            <td>${assignment.BroadcastDay}</td>
+            <td><button onclick="saveCartNumber(this)">Save</button></td>
+          `;
+          table.appendChild(row);
+        });
+
+        resultElement.appendChild(table);
+      }
+
+      function saveCartNumber(button) {
+        const row = button.parentElement.parentElement;
+        const input = row.querySelector('input[type="text"]');
+        const cartNumber = input.value;
+        const id = input.dataset.id;
+
+        const payload = [{ idAIMOnDemandStationAssignments: id, CartNumber: cartNumber }];
+
+        fetch(
+          'https://c4z6hnvmce.execute-api.us-west-2.amazonaws.com/Testing/updateOnDemandCartAssignment/',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          }
+        )
+          .then((response) => response.json())
+          .then((data) => alert('Cart number updated successfully!'))
+          .catch((error) => console.error('Error:', error));
+      }
+    </script> -->
+  </body>
+</html>
